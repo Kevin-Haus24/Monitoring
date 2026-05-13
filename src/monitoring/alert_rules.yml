@@ -1,0 +1,31 @@
+groups:
+  - name: system-alerts
+    rules:
+      - alert: NodeMemoryAvailableLow
+        expr: node_memory_MemAvailable_bytes < 100 * 1024 * 1024
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Мало доступной памяти на {{ $labels.instance }}"
+          description: "Доступная память ниже 100 МБ."
+
+      - alert: NodeRamUsedHigh
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) > 1 * 1024 * 1024 * 1024
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокое потребление RAM на {{ $labels.instance }}"
+          description: "Занято RAM больше 1 ГБ."
+
+      - alert: ServiceCpuHigh
+        expr: sum by (container_label_com_docker_swarm_service_name) (
+          rate(container_cpu_usage_seconds_total{image!="", container_label_com_docker_swarm_service_name!=""}[1m])
+          ) * 100 > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокое использование CPU у сервиса {{ $labels.container_label_com_docker_swarm_service_name }}"
+          description: "CPU сервиса превышает 10%."

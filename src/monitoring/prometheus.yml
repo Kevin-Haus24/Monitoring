@@ -1,0 +1,84 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - prometheus:9090
+
+  # Node Exporter (ВСЕ ноды Swarm)
+  - job_name: node
+
+    dns_sd_configs:
+      - names:
+          - tasks.node-exporter
+        type: A
+        port: 9100
+
+  # cAdvisor (ВСЕ ноды Swarm)
+  - job_name: cadvisor
+
+    dns_sd_configs:
+      - names:
+          - tasks.cadvisor
+        type: A
+        port: 8080
+
+  # Blackbox exporter
+  - job_name: blackbox
+    metrics_path: /metrics
+
+    static_configs:
+      - targets:
+          - blackbox-exporter:9115
+
+  # Spring Boot приложения
+  - job_name: spring-apps
+    metrics_path: /actuator/prometheus
+
+    static_configs:
+      - targets:
+          - session-service:8081
+          - booking-service:8083
+          - report-service:8086
+          - gateway-service:8087
+
+  # Healthcheck через blackbox
+  - job_name: blackbox-http
+
+    metrics_path: /probe
+
+    params:
+      module:
+        - http_2xx
+
+    static_configs:
+      - targets:
+          - http://gateway-service:8087/actuator/health
+          - http://session-service:8081/actuator/health
+          - http://booking-service:8083/actuator/health
+          - http://report-service:8086/actuator/health
+          - https://google.com
+
+    relabel_configs:
+      - source_labels:
+          - __address__
+        target_label: __param_target
+
+      - source_labels:
+          - __param_target
+        target_label: instance
+
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

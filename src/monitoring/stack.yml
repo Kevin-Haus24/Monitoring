@@ -1,0 +1,131 @@
+services:
+  prometheus:
+    image: prom/prometheus:v3.11.3
+    volumes:
+      - /home/vagrant/services/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /home/vagrant/services/monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == manager01
+
+  loki:
+    image: grafana/loki:3.7.1
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - /home/vagrant/services/monitoring/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - monitoring
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == manager01
+
+  promtail:
+    image: grafana/promtail:3.6.10
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - /home/vagrant/services/monitoring/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - monitoring
+    deploy:
+      mode: global
+
+  node-exporter:
+    image: prom/node-exporter:v1.11.1
+    hostname: "{{.Node.Hostname}}"
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring
+    deploy:
+      mode: global
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:0.56.2
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - monitoring
+    deploy:
+      mode: global
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.28.0
+    volumes:
+      - /home/vagrant/services/monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    ports:
+      - "9115:9115"
+    command:
+      - --config.file=/etc/blackbox_exporter/config.yml
+    networks:
+      - monitoring
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == manager01
+
+  grafana:
+    image: grafana/grafana:13.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == manager01
+
+  alertmanager:
+    image: prom/alertmanager:v0.32.1
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - /home/vagrant/services/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == manager01
+
+networks:
+  monitoring:
+    external: true
+
+volumes:
+  loki_data:
+  grafana_data:
+  alertmanager_data:
