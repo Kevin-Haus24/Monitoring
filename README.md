@@ -143,7 +143,3 @@ Monitoring/
 - Проект рассчитан на запуск в среде с поддержкой VirtualBox и Vagrant.
 - Образы сервисов уже указаны в compose-файле и берутся из Docker Hub.
 - Для отправки уведомлений через Alertmanager в [src/monitoring/alertmanager.yml](src/monitoring/alertmanager.yml) нужно заменить плейсхолдеры на реальные SMTP и Telegram-данные.
-
-## 📄 Лицензия
-
-Проект создан в учебных целях.
